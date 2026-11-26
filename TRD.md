@@ -5,7 +5,7 @@
 > 요구사항: [PRD.md](PRD.md) · 근거: [설계명세서.md](설계명세서.md) · 사용법: [README.md](README.md)
 > 버전: **v2 (2026-11-26) · 상태: 구현 완료, 이 문서는 실제 소스 코드 기준** · 구현 모델: Claude Code **Sonnet 5.5** (기획·설계는 Opus)
 > v1(구현 전 설계)과 달라진 점은 13절에 정리함
-> 5차시 학생 제출 저장(테이블·RLS·서버 함수)은 14절에 설계만 추가함(**아직 구현하지 않음**)
+> 5차시 학생 제출 저장(테이블·RLS·서버 함수)은 14절에 있음(**구현됨 · 로컬에서 실제 Supabase로 시험 완료. Vercel 배포는 아직 실행 전**)
 
 ## 1. 기술 선택 요약
 | 영역 | 선택 | 이유 |
@@ -19,7 +19,7 @@
 | 추론 강도 | 환경변수 `GEMINI_THINKING_LEVEL`, 기본값 **`low`** | 두 모델 공통으로 쓸 수 있는 값 |
 | 로컬 실행 | `dev-server.mjs` (`npm run dev`, 외부 패키지 없음) | 정적 파일 + `/api/feedback`을 한 번에 실행 |
 | 기기 저장 | **쓰지 않음** (`localStorage`·쿠키 없음) | 집중 기록·답·힌트는 메모리에만 두고 화면에만 표시 |
-| 배포 | GitHub 저장소 → Supabase 연계 | 폴더 1개 = 저장소 1개 = 배포 주소 1개. 서버 함수 형식 변환은 11-2 참고 |
+| 배포 | GitHub 저장소 → **Vercel**(화면·서버 함수). DB는 **Supabase** | 서버 함수가 Node 형식이라 코드 변경 없이 올림. 상세는 11절 |
 
 외부 의존성
 - 브라우저(CDN, 정확한 버전 고정): `marked@12.0.2`, `dompurify@3.1.6`
@@ -294,7 +294,7 @@ Api-Revision: 2026-05-20
 ## 9. 보안·비용 통제
 | 항목 | 방법 |
 |---|---|
-| 키 보관 | 로컬은 `.env.local`(`.env.example`을 복사해 작성), 배포는 Supabase 환경변수(Secrets). 코드·대화창·저장소에 키를 쓰지 않음 |
+| 키 보관 | 로컬은 `.env.local`(`.env.example`을 복사해 작성), 배포는 Vercel 환경변수. 코드·대화창·저장소에 키를 쓰지 않음 |
 | 저장소 보호 | `.gitignore`에 `.env`, `.env.*` 제외(`.env.example`만 허용). 첫 커밋 전에 확인 |
 | 소스·비밀 파일 열람 차단 | `dev-server.mjs`가 `/.`로 시작하거나 `/.`가 들어 있는 경로, `/api/` 아래 파일을 403으로 막음. 폴더 밖 경로도 403 |
 | 키 노출 점검 | 개발자 도구 Sources·Network에서 키 앞부분 검색, GitHub 저장소 검색 → 0건 |
@@ -312,18 +312,29 @@ Api-Revision: 2026-05-20
 - `.env`와 `.env.local`을 모두 읽고, 같은 이름은 `.env.local` 값이 우선함
 - `index.html`을 파일로 직접 열면(`file://`) 자료를 읽지 못함 → 반드시 로컬 서버 주소로 열기
 
-## 11. 배포 (GitHub → Supabase)
-### 11-1. 순서
-1. 커밋·푸시 전에 `.env.local`이 추적되지 않는지 확인(`git status`)
-2. GitHub 저장소에 push
-3. Supabase 환경변수(Secrets)에 `GEMINI_API_KEY` 등록(필요하면 `GEMINI_MODEL`·`GEMINI_THINKING_LEVEL`도 등록)
-4. 환경변수를 새로 등록·변경했으면 다시 배포(등록만 하면 반영 안 됨)
-5. 배포 주소에서 9절 키 노출 점검
+## 11. 배포 (Vercel)와 DB (Supabase)
+### 11-1. 역할
+| 서비스 | 맡는 일 | 우리 앱에서 |
+|---|---|---|
+| GitHub | 코드 보관 | Vercel이 저장소를 가져가 배포 |
+| **Vercel** | 화면과 서버 함수 호스팅(배포) | `index.html`·`teacher.html`·`materials/`·`api/*.js` |
+| **Supabase** | DB(표 저장·조회, RLS) | `answers`·`questions` |
+- 서버 함수가 환경변수의 secret key로 Supabase에 접근한다. 브라우저는 Supabase에 직접 접근하지 않는다
+- Supabase는 화면을 올리는 용도가 아니다. Edge Functions(Deno)도 쓰지 않는다
 
-### 11-2. 주의 — 서버 함수 형식
-- 지금 `api/feedback.js`는 Node.js `(req, res)` 형식(`res.status().json()`)이고, 로컬에서는 `dev-server.mjs`가 이 형식을 맞춰 줌
-- Supabase Edge Functions는 Deno 기반(`Deno.serve`, `Request`/`Response`)이라 그대로 올릴 수 없음. 올릴 때는 `buildPrompt()`·`callGemini()`·`leaksAnswer()`는 그대로 두고 요청·응답 처리 부분만 바꿔야 함
-- 정적 화면(`index.html`·`materials/`)을 어디에 올릴지, 함수 경로(`/api/feedback`)를 어떻게 맞출지, Secrets 이름 규칙은 **연수 당일 Supabase 공식 문서로 확인**
+### 11-2. 5차시 진행 순서
+4차시는 로컬 테스트로 끝나 있고, 5차시는 아래 순서로 진행한다.
+1. **Vercel 배포**: Claude Code 프롬프트로 GitHub 저장소를 Vercel에 배포. `GEMINI_API_KEY`는 Vercel 환경변수에 등록(값은 직접 입력, 대화에 쓰지 않음)
+2. **배포 확인**: 배포 주소 접속, 수준 선택·집중 모드·힌트 동작, 휴대폰 접속, 키 노출 점검
+3. **Supabase 준비**: 가입, 프로젝트 생성(지역·DB 비밀번호), 설계 문서 수정
+4. **DB 완료**: `supabase/migrations/20261126113000_create_answers_questions.sql`을 SQL Editor에서 실행(표 2개, RLS), Project URL·secret key를 `.env.local`에 입력해 로컬 시험
+5. **배포 및 점검·테스트**: `SUPABASE_URL`·`SUPABASE_SECRET_KEY`·`TEACHER_CODE`를 Vercel 환경변수에 등록 → 재배포 → 배포 주소에서 저장·조회 테스트, 다른 기기 확인, 키 노출 점검
+
+### 11-3. 주의
+- 환경변수를 새로 등록·변경했으면 **재배포**해야 반영된다(등록만 하면 이전 배포에는 적용되지 않음)
+- `.env.local`은 GitHub에 올라가지 않으므로 배포 환경에는 Vercel 환경변수로 따로 등록해야 한다
+- Vercel의 `api/` 폴더 규칙(`_`로 시작하는 파일 처리 등), 정적 파일 제공 방식, 환경변수 메뉴 이름은 **당일 공식 문서로 확인**
+- `SUPABASE_SECRET_KEY`에 publishable key(`sb_publishable_…`)를 넣으면 저장이 거부된다. `sb_secret_…`로 시작하는지 확인
 
 ## 12. 테스트 계획
 자동 테스트 도구는 두지 않고 아래 시나리오를 직접 확인함. 2026-11-26 로컬에서 1·2·5·9번을 `gemini-3.5-flash-lite` 실제 호출로 확인함
@@ -353,7 +364,7 @@ Api-Revision: 2026-05-20
 | `localStorage`에 힌트·집중 기록 저장 | 저장하지 않음(메모리만) | 학생 기록을 남기지 않는 원칙 |
 | 누출 검사: `evidence` 문장 20자 일치 | 모범 답안 15자 창(3자 간격) 일치, 2회 누출 시 대체 힌트 | 실제 문항 데이터(`model`)에 맞춤 |
 
-## 14. 5차시 확장 설계 — 학생 제출 저장 (설계만, 아직 구현하지 않음)
+## 14. 5차시 확장 — 학생 제출 저장 (구현됨 · 로컬 시험 완료)
 요구사항: [PRD.md](PRD.md) 5-7절 · 개인정보 원칙: [설계명세서.md](설계명세서.md) 10절
 
 ### 14-1. 변경 요약
@@ -367,7 +378,7 @@ Api-Revision: 2026-05-20
 - `api/feedback.js`의 요청 형식(5-2)은 그대로 둠. 질문 저장은 `api/feedback.js`가 아니라 **브라우저가 힌트를 받은 뒤 `api/submit.js`를 따로 호출**해서 함(힌트 기능과 저장 기능을 분리해, 저장이 실패해도 힌트는 그대로 동작)
 
 ### 14-2. 데이터 모델 (Postgres)
-SQL 파일: `supabase/migrations/20261126113000_create_answers_questions.sql` (Supabase SQL Editor에 붙여넣거나 GitHub 연동으로 반영)
+SQL 파일: `supabase/migrations/20261126113000_create_answers_questions.sql` (Supabase SQL Editor에 붙여넣어 실행)
 
 `answers` — 확인 질문(형성평가) 답
 | 열 | 타입 | 규칙 | 설명 |
@@ -404,6 +415,7 @@ SQL 파일: `supabase/migrations/20261126113000_create_answers_questions.sql` (S
 - secret key는 서버 함수 환경변수에만 두고 브라우저 코드·저장소·응답에 노출하지 않음
 
 ### 14-4. 서버 함수 `POST /api/submit`
+구현: `api/submit.js` (공통 검사·Supabase 호출은 `api/_store.js`. 파일명이 `_`로 시작하면 경로로 열리지 않는 공통 도구). Supabase는 REST(`/rest/v1/{표}`)를 `fetch`로 호출하며 키는 `apikey` 헤더로만 보냄(예전 JWT 형식 키는 `Authorization`도 보냄)
 공통: `Content-Type: application/json`, 응답 `Cache-Control: no-store`. 키 `SUPABASE_URL`·`SUPABASE_SECRET_KEY`가 없으면 500 `NO_STORE`. 서버는 답·질문을 로그에 남기지 않음
 
 확인 질문 답 저장
@@ -454,7 +466,8 @@ SQL 파일: `supabase/migrations/20261126113000_create_answers_questions.sql` (S
 ### 14-5. 서버 함수 `GET /api/results` (교사 조회)
 - 요청: `GET /api/results?classCode=1-3` + 헤더 `x-teacher-code: {교사 코드}`
 - 서버가 `TEACHER_CODE` 환경변수와 비교(길이가 같을 때 상수 시간 비교). 없거나 틀리면 401 `UNAUTHORIZED`. 코드는 주소(쿼리 문자열)에 넣지 않음
-- 응답 `200`: `{ "answers": [ … ], "questions": [ … ] }` (해당 반의 행을 `created_at` 내림차순, 각 최대 500줄)
+- 응답 `200`: `{ "classCode": "1-3" 또는 null, "classes": ["1-3", …], "answers": [ … ], "questions": [ … ] }` (`created_at` 내림차순, 표마다 최대 500줄. `classes`는 기록이 있는 반 코드 목록으로 화면의 거르기 목록에 씀)
+- `classCode`를 생략하면 전체 반. 교사 코드가 없거나 틀리면 401, 서버에 `TEACHER_CODE`가 없으면 500 `NO_TEACHER_CODE`
 - 반 코드 형식 검사는 14-4와 같음. 학생 화면(`index.html`)에서는 이 함수를 부르지 않음
 
 ### 14-6. 화면 변경
@@ -462,7 +475,8 @@ SQL 파일: `supabase/migrations/20261126113000_create_answers_questions.sql` (S
 |---|---|
 | `index.html` 시작 화면 | 반 코드·학번 입력 칸 추가. 안내 문구: "이름·연락처는 쓰지 않아요". 입력 전에는 저장 없이 읽기만 가능 |
 | `js/activities.js` | 채점 후 `api/submit.js`(`kind: "answers"`) 호출, 힌트 성공 후 질문이 있으면 `kind: "question"` 호출 |
-| `teacher.html`(새 파일) | 교사 코드·반 코드 입력 → 답·질문 표. 실명 열 없음 |
+| `js/student.js`(새 파일) | 반 코드·학번 입력 검사(학번은 숫자만 남김), 저장 요청, 오류 안내 문구. 값은 입력 칸에만 있고 `localStorage`·쿠키에 저장하지 않음 |
+| `teacher.html`·`js/teacher.js`(새 파일) | 교사 코드·반 코드 입력 → 답·질문 표. 실명 열 없음 |
 
 ### 14-7. 환경변수
 | 이름 | 용도 | 비고 |
@@ -482,11 +496,16 @@ SQL 파일: `supabase/migrations/20261126113000_create_answers_questions.sql` (S
 | 4 | 개발자 도구에서 publishable key로 `answers` 조회·삽입 | 권한 오류로 거부(빈 결과 또는 오류) |
 | 5 | 휴대폰에서 제출 → PC 교사 화면에서 조회 | 같은 기록이 보임 |
 | 6 | 교사 코드 없이 `/api/results` 호출 | 401 |
-| 7 | 키 노출 점검(9절 방식) | `SUPABASE_SECRET_KEY` 값이 브라우저·저장소에 0건 |
+\1| 8 | 배포 주소(Vercel)에서 학생 화면 열기 → 힌트 받기 | 첫 화면이 열리고 힌트가 동작(`GEMINI_API_KEY`를 Vercel 환경변수에 등록) |
+| 9 | Vercel 환경변수 4개 등록 → 재배포 → 배포 주소에서 제출·조회 | `answers`·`questions`에 줄이 생기고 교사 화면에서 같은 기록이 보임 |
+| 10 | 휴대폰으로 제출 → PC 교사 화면에서 조회 | 같은 기록이 보임(다른 기기 확인) |
+
+**시험 결과 (2026-11-26)**: 가짜 `fetch` 모의 시험 60개, 실제 Supabase(로컬 서버 경유) 24개 통과. 브라우저에서 반 코드·학번 입력 → 채점 저장 → 질문 저장 → 교사 화면 조회·거르기·저장 실패 후 [다시 저장]까지 확인. 시험 데이터(반 코드 `0-0`)는 삭제함. 아직 못 한 것: 위 3번 학번 이름 입력의 DB 직접 거부, **4번(publishable key로 직접 접근 거부)**, 5번(다른 기기 확인), Supabase 배포 환경
 
 ### 14-9. 열린 질문
 - **정답률 집계(6차시)**: `answers`에 정오 열이 없음. 정답률이 필요하면 `is_correct` 열을 추가하거나 서버 함수에서 `activities.json`의 정답과 비교해 계산하는 방식을 6차시 전에 정함
 - **정답 보호**: 정답이 `activities.json`에 그대로 있어 개발자 도구로 볼 수 있음. 정답을 DB로 옮겨 서버에서만 채점하는 방식은 범위가 커서 5차시 수업 사례로만 다룸
 - **학번의 식별성**: 반 코드와 학번의 조합으로 학생을 알아볼 수 있음 → 실제 수업 적용 전에 학교 개인정보 처리 절차를 확인
 - **힌트 횟수 DB 제한**: `questions` 기록으로 서버에서 3회를 세는 방식은 아직 설계하지 않음(지금은 브라우저 기준)
-- **서버 함수 형식**: `api/submit.js`·`api/results.js`도 11-2절과 같은 이유로 Supabase 배포 형식에 맞춰 옮겨야 할 수 있음(당일 공식 문서 확인)
+- **교사 코드 입력 횟수 제한 없음**: `/api/results`는 틀린 코드를 몇 번이든 시도할 수 있음. 실제 수업에 쓰기 전에 시도 횟수 제한을 둘지 정함
+- **서버 함수 형식**: 서버 함수 3개(`feedback.js`·`submit.js`·`results.js`)는 Node 형식 그대로 Vercel에서 실행(11절). Vercel의 `api/` 규칙은 당일 공식 문서 확인
