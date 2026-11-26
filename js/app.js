@@ -2,6 +2,7 @@
 import { initReaderTools } from './reader-tools.js';
 import { createFocusMode } from './focus.js';
 import { mountActivities } from './activities.js';
+import { initStudent } from './student.js';
 
 const LEVELS = {
   basic: { label: '기초', file: '기초.md' },
@@ -35,6 +36,14 @@ const tools = initReaderTools({
   fontBtn: $('fontBtn'),
   speakBtn: $('speakBtn'),
   popover: $('termPopover'),
+});
+
+// 반 코드·학번 입력 칸(저장 기능에서 사용)
+initStudent({
+  classInput: $('classCodeInput'),
+  noInput: $('studentNoInput'),
+  statusEl: $('studentStatus'),
+  badgeEl: $('whoBadge'),
 });
 
 const focus = createFocusMode({

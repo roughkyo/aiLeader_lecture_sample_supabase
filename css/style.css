@@ -392,3 +392,61 @@ body.is-away .blur-target { filter: blur(8px); pointer-events: none; user-select
   .toolbar-group { margin-left: 0; }
   .level-name { font-size: 20px; }
 }
+
+/* ---------- 5차시: 학생 구분(반 코드·학번) 입력 ---------- */
+.student-box {
+  margin-bottom: 20px;
+  padding: 14px 16px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+.student-box h2 { margin: 0 0 8px; font-size: 18px; }
+.student-fields { display: flex; flex-wrap: wrap; gap: 10px 16px; }
+.student-field { display: flex; flex-direction: column; gap: 4px; font-size: 14px; color: var(--muted); }
+.student-field input,
+.student-field select {
+  font: inherit;
+  font-size: 16px;
+  min-width: 150px;
+  padding: 8px 10px;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+.student-field input:focus-visible, .student-field select:focus-visible { outline: 2px solid var(--primary); outline-offset: 1px; }
+.student-note { margin: 8px 0 0; font-size: 14px; color: var(--muted); }
+.student-status { margin: 4px 0 0; font-size: 14px; color: var(--muted); }
+.student-status.is-correct { color: var(--ok); font-weight: 600; }
+.student-status.is-wrong { color: var(--bad); font-weight: 600; }
+.badge-who { background: #eef0f6; color: var(--muted); }
+.badge-who.is-saving { background: var(--ok-soft); color: var(--ok); }
+
+/* 형성평가 저장 상태 */
+.save-box { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-top: 10px; font-size: .92em; }
+.save-status { margin: 0; color: var(--muted); }
+
+/* ---------- 5차시: 교사 화면 ---------- */
+.teacher-main { max-width: 1100px; margin: 0 auto; padding: 16px; }
+.teacher-main h2 { margin: 24px 0 8px; font-size: 18px; }
+.teacher-main h2 small { font-weight: 400; color: var(--muted); }
+.teacher-card {
+  max-width: 460px;
+  margin: 24px auto;
+  padding: 18px 20px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+.teacher-card h2 { margin-top: 0; }
+.teacher-login { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px 12px; margin-top: 10px; }
+.teacher-toolbar { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px 12px; }
+.teacher-summary { margin-left: auto; font-size: 14px; color: var(--muted); }
+.table-wrap { overflow-x: auto; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); }
+.data-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.data-table th, .data-table td { padding: 8px 10px; text-align: left; vertical-align: top; border-bottom: 1px solid var(--line); white-space: nowrap; }
+.data-table th { background: #f1f3f9; font-weight: 600; }
+.data-table td.is-text { white-space: normal; min-width: 220px; overflow-wrap: anywhere; }
+.data-table td.is-empty { text-align: center; color: var(--muted); white-space: normal; }
+.data-table tbody tr:last-child td { border-bottom: 0; }

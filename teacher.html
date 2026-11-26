@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>교사 화면 — 학생 제출 기록</title>
+  <link rel="stylesheet" href="css/style.css">
+  <script type="module" src="js/teacher.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <h1 class="app-title">교사 화면 — 학생 제출 기록</h1>
+    <a class="btn btn-ghost" href="index.html">학생 화면으로</a>
+  </header>
+
+  <main class="teacher-main">
+    <!-- 1. 교사 코드 입력 -->
+    <section id="loginBox" class="teacher-card" aria-labelledby="loginTitle">
+      <h2 id="loginTitle">교사 코드</h2>
+      <p class="student-note">교사 코드가 맞을 때만 학생 기록을 보여 줘요. 코드는 이 화면에서만 쓰고 저장하지 않아요.</p>
+      <form id="loginForm" class="teacher-login" autocomplete="off">
+        <label class="student-field">교사 코드
+          <input id="teacherCode" type="password" autocomplete="off" spellcheck="false" required>
+        </label>
+        <button class="btn btn-primary" type="submit">기록 보기</button>
+      </form>
+      <p id="loginStatus" class="student-status" role="status" aria-live="polite"></p>
+    </section>
+
+    <!-- 2. 기록 보기 -->
+    <section id="resultBox" hidden>
+      <div class="teacher-toolbar">
+        <label class="student-field teacher-filter">반 코드로 거르기
+          <select id="classFilter"></select>
+        </label>
+        <button id="refreshBtn" class="btn" type="button">새로고침</button>
+        <button id="logoutBtn" class="btn btn-ghost" type="button">교사 코드 지우기</button>
+        <span id="summary" class="teacher-summary" role="status" aria-live="polite"></span>
+      </div>
+
+      <h2>확인 질문 답 <small>(answers)</small></h2>
+      <div class="table-wrap">
+        <table id="answersTable" class="data-table">
+          <thead><tr><th>제출 시각</th><th>반 코드</th><th>학번</th><th>수준</th><th>문항</th><th>답</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+
+      <h2>학생 질문 <small>(questions)</small></h2>
+      <div class="table-wrap">
+        <table id="questionsTable" class="data-table">
+          <thead><tr><th>질문 시각</th><th>반 코드</th><th>학번</th><th>수준</th><th>질문</th><th>힌트 단계</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <p class="student-note">최신순으로 표마다 최대 500줄까지 보여 줘요. 실명·연락처는 저장하지 않아요. 학기가 끝나면 기록을 삭제하세요.</p>
+    </section>
+  </main>
+</body>
+</html>

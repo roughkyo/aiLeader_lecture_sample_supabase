@@ -33,6 +33,21 @@
   <main class="blur-target">
     <!-- 1. 수준 선택 화면 -->
     <section id="levelScreen" class="screen" aria-labelledby="levelTitle">
+      <!-- 학생 구분: 반 코드·학번만 받는다(이름·연락처 입력 칸 없음) -->
+      <div class="student-box" role="group" aria-labelledby="studentTitle">
+        <h2 id="studentTitle">내 반 코드와 학번</h2>
+        <div class="student-fields">
+          <label class="student-field">반 코드
+            <input id="classCodeInput" type="text" maxlength="20" autocomplete="off" spellcheck="false" placeholder="예: 1-3">
+          </label>
+          <label class="student-field">학번
+            <input id="studentNoInput" type="text" maxlength="10" inputmode="numeric" autocomplete="off" placeholder="숫자만">
+          </label>
+        </div>
+        <p class="student-note">이름·연락처는 쓰지 않아요.</p>
+        <p id="studentStatus" class="student-status" role="status" aria-live="polite"></p>
+      </div>
+
       <h2 id="levelTitle">내 수준을 골라 주세요</h2>
       <div class="level-grid">
         <button class="level-card" type="button" data-level="basic">
@@ -56,6 +71,7 @@
       <div class="toolbar">
         <button id="backBtn" class="btn btn-ghost" type="button">← 수준 다시 고르기</button>
         <span id="levelBadge" class="badge"></span>
+        <span id="whoBadge" class="badge badge-who" title="형성평가 답과 질문을 저장할 반 코드·학번(수준 화면에서 바꿀 수 있어요)"></span>
         <div class="toolbar-group">
           <button id="fontBtn" class="btn" type="button" aria-pressed="false">가+ 글자 크기: 보통</button>
           <button id="speakBtn" class="btn" type="button" aria-pressed="false">🔊 읽어 주기</button>

@@ -1,6 +1,6 @@
 // 로컬 개발 서버 (외부 패키지 없음, Node.js 20+)
 // - .env.local(.env) 자동 로드
-// - 정적 파일 서빙 + 서버 함수(api/feedback.js) 로컬 실행
+// - 정적 파일 서빙 + 서버 함수 로컬 실행: api/feedback.js(힌트), api/submit.js(저장), api/results.js(교사 조회)
 
 import http from 'node:http';
 import fs from 'node:fs/promises';
@@ -8,6 +8,15 @@ import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import feedbackHandler from './api/feedback.js';
+import submitHandler from './api/submit.js';
+import resultsHandler from './api/results.js';
+
+// 주소 → 서버 함수. api/_store.js 같은 공통 도구는 경로로 열리지 않는다.
+const API_ROUTES = {
+  '/api/feedback': feedbackHandler,
+  '/api/submit': submitHandler,
+  '/api/results': resultsHandler,
+};
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT || 5173);
@@ -85,11 +94,13 @@ const server = http.createServer(async (req, res) => {
   const url = new URL(req.url || '/', `http://${HOST}:${PORT}`);
   const pathname = decodeURIComponent(url.pathname);
 
-  if (pathname === '/api/feedback') {
+  const apiHandler = API_ROUTES[pathname];
+  if (apiHandler) {
     try {
       const raw = await readBody(req);
       req.body = raw;
-      await feedbackHandler(req, wrapResponse(res));
+      req.query = Object.fromEntries(url.searchParams);   // GET /api/results?classCode=1-3 용
+      await apiHandler(req, wrapResponse(res));
     } catch (err) {
       res.statusCode = err.message === 'PAYLOAD_TOO_LARGE' ? 413 : 500;
       res.setHeader('Content-Type', 'application/json; charset=utf-8');
@@ -131,4 +142,7 @@ server.listen(PORT, HOST, () => {
   const hasKey = Boolean(process.env.GEMINI_API_KEY?.trim());
   console.log(`level-reader 로컬 서버 실행 중: http://${HOST}:${PORT}`);
   console.log(`모델: ${model} | GEMINI_API_KEY: ${hasKey ? '설정됨' : '미설정'}`);
+  const on = (name) => (process.env[name]?.trim() ? '설정됨' : '미설정');
+  console.log(`SUPABASE_URL: ${on('SUPABASE_URL')} | SUPABASE_SECRET_KEY: ${on('SUPABASE_SECRET_KEY')} | TEACHER_CODE: ${on('TEACHER_CODE')}`);
+  console.log(`교사 화면: http://${HOST}:${PORT}/teacher.html`);
 });

@@ -1,6 +1,10 @@
 // 학습 활동: 본문 중간 활동(하나 고르기·골라 넣기·빈칸 채우기·중요 단어 찾기) + 형성평가
-// 문제·정답은 materials/activities.json에 있다. 답과 점수는 화면에만 보이고 저장하지 않는다.
+// 문제·정답은 materials/activities.json에 있다. 점수는 화면에만 보이고 저장하지 않는다.
 // 서술형의 [💡 힌트 받기]는 서버 함수 /api/feedback(Gemini)을 부른다 → 로컬 개발 서버(npm run dev) 또는 배포 환경에서 동작.
+// 5차시: 반 코드·학번을 입력했다면 [채점하기] 때 형성평가 답을, 질문을 입력해 힌트를 받을 때 질문을
+//        서버 함수 /api/submit으로 Supabase에 저장한다(js/student.js). 실명은 받지 않는다.
+
+import { getStudent, saveSubmission, SAVE_ERRORS } from './student.js';
 
 const TYPE_LABEL = {
   choice: '하나 고르기',
@@ -88,7 +92,8 @@ async function requestHint(payload) {
 }
 
 /* ---------- 문항 위젯 ----------
-   각 위젯: { node, check() → {answered, correct}, reveal(), answerText(), lock(bool), reset() } */
+   각 위젯: { node, check() → {answered, correct}, reveal(), answerText(), value(), lock(bool), reset() }
+   value()는 학생이 입력·선택한 답을 글로 돌려준다. reveal()이 입력값을 정답으로 바꾸므로 check() 직후, reveal() 전에 읽는다. */
 
 function buildChoice(item) {
   const name = nextId('choice');
@@ -113,6 +118,10 @@ function buildChoice(item) {
     },
     reveal() { labels[item.answer].classList.add('is-answer'); },
     answerText: () => item.options[item.answer],
+    value() {
+      const picked = fieldset.querySelector('input:checked');
+      return picked ? item.options[Number(picked.value)] : '';
+    },
     lock(on) { fieldset.disabled = on; },
     reset() {
       fieldset.querySelectorAll('input').forEach((input) => { input.checked = false; });
@@ -157,6 +166,7 @@ function buildSelect(item) {
       });
     },
     answerText: () => selects.map(({ slot }) => slot.options[slot.answer]).join(' / '),
+    value: () => selects.map(({ select, slot }) => (select.value === '' ? '' : slot.options[Number(select.value)])).join(' / '),
     lock(on) { selects.forEach(({ select }) => { select.disabled = on; }); },
     reset() {
       selects.forEach(({ select }) => { select.value = ''; select.disabled = false; });
@@ -202,6 +212,7 @@ function buildBlank(item) {
       });
     },
     answerText: () => inputs.map(({ accepted }) => accepted[0]).join(' / '),
+    value: () => inputs.map(({ input }) => input.value.trim()).join(' / '),
     lock(on) { inputs.forEach(({ input }) => { input.readOnly = on; }); },
     reset() {
       inputs.forEach(({ input }) => { input.value = ''; input.readOnly = false; });
@@ -290,6 +301,7 @@ function buildHighlight(item, { onProgress } = {}) {
       status.textContent = `정답: ${targets.join(', ')}`;
     },
     answerText: () => targets.join(', '),
+    value: () => [...found].join(', '),
     lock() {},
     reset() {
       found.clear();
@@ -330,6 +342,21 @@ function buildEssay(item, { ctx } = {}) {
   };
   updateHintBtn();
 
+  // 질문을 입력해 받은 힌트만 questions 표에 저장한다(질문 칸을 비운 요청은 저장하지 않음).
+  // 저장이 실패해도 힌트는 그대로 보여 준다.
+  async function saveQuestion(questionText, hintStep) {
+    const student = getStudent();
+    if (!student) {
+      hintStatus.textContent = '반 코드·학번을 입력하지 않아서 질문은 저장하지 않았어요.';
+      return;
+    }
+    try {
+      await saveSubmission({ kind: 'question', ...student, level: ctx?.level ?? 'normal', questionText, hintStep });
+    } catch (err) {
+      hintStatus.textContent = `힌트는 받았지만 질문을 저장하지 못했어요. ${SAVE_ERRORS[err.message] ?? ''}`.trim();
+    }
+  }
+
   async function askHint() {
     if (busy || locked || hints.length >= MAX_HINTS) return;
     const studentQuestion = askInput.value.trim().slice(0, 300);
@@ -358,6 +385,7 @@ function buildEssay(item, { ctx } = {}) {
       hintList.append(li);
       askInput.value = '';
       hintStatus.textContent = '';
+      if (studentQuestion) saveQuestion(studentQuestion, hints.length);   // 기다리지 않고 저장(실패해도 힌트는 유지)
     } catch (err) {
       hintStatus.textContent = HINT_ERRORS[err.message] ?? '힌트를 받지 못했어요. 잠시 뒤 다시 눌러 주세요.';
     } finally {
@@ -399,6 +427,7 @@ function buildEssay(item, { ctx } = {}) {
     },
     reveal() {},
     answerText: () => item.model,
+    value: () => textarea.value.trim().slice(0, 1000),
     lock(on) { textarea.readOnly = on; locked = on; updateHintBtn(); },
     // 다시 풀어도 이미 쓴 힌트 횟수는 그대로(3회 제한 유지)
     reset() { textarea.value = ''; textarea.readOnly = false; locked = false; review.hidden = true; review.replaceChildren(); updateHintBtn(); },
@@ -460,7 +489,7 @@ function buildQuiz(items, ctx) {
   const section = el('section', { class: 'quiz', 'aria-labelledby': titleId });
   section.append(
     el('h2', { id: titleId, text: '📝 형성평가' }),
-    el('p', { class: 'quiz-intro', text: '모두 풀고 [채점하기]를 누르세요. 고르기·골라 넣기·빈칸은 자동으로 채점하고, 서술형은 핵심어로 스스로 점검해요. 답과 점수는 저장되지 않아요.' }),
+    el('p', { class: 'quiz-intro', text: '모두 풀고 [채점하기]를 누르세요. 고르기·골라 넣기·빈칸은 자동으로 채점하고, 서술형은 핵심어로 스스로 점검해요. 점수는 저장되지 않고, 반 코드·학번을 입력했다면 내 답이 저장돼요.' }),
   );
 
   const list = el('ol', { class: 'quiz-list' });
@@ -483,7 +512,46 @@ function buildQuiz(items, ctx) {
   const retryBtn = el('button', { type: 'button', class: 'btn', text: '틀린 문제 다시 풀기', hidden: '' });
   const resetBtn = el('button', { type: 'button', class: 'btn btn-ghost', text: '처음부터 다시', hidden: '' });
   buttons.append(gradeBtn, retryBtn, resetBtn);
-  section.append(list, summary, buttons);
+
+  // 저장 상태: 반 코드·학번이 있으면 채점한 답을 Supabase(answers 표)에 저장한다
+  const saveStatus = el('p', { class: 'save-status', role: 'status', 'aria-live': 'polite' });
+  const saveBtn = el('button', { type: 'button', class: 'btn btn-small', hidden: '' });
+  const saveBox = el('div', { class: 'save-box', hidden: '' }, saveStatus, saveBtn);
+  const pending = new Map();   // 아직 저장하지 못한 답: 문항 번호 → 답
+  let saving = false;
+
+  section.append(list, summary, buttons, saveBox);
+
+  async function saveAnswers() {
+    if (saving || !pending.size) return;
+    saveBox.hidden = false;
+    const student = getStudent();
+    if (!student) {
+      saveStatus.textContent = '반 코드·학번을 입력하지 않아서 답은 저장하지 않았어요. 수준 화면에서 입력한 뒤 [저장하기]를 누르세요.';
+      saveBtn.textContent = '저장하기';
+      saveBtn.hidden = false;
+      return;
+    }
+    saving = true;
+    saveBtn.hidden = true;
+    saveStatus.textContent = '답을 저장하는 중…';
+    const sent = [...pending].map(([questionNo, answer]) => ({ questionNo, answer }));
+    let ok = false;
+    try {
+      const n = await saveSubmission({ kind: 'answers', ...student, level: ctx?.level ?? 'normal', items: sent });
+      sent.forEach(({ questionNo, answer }) => { if (pending.get(questionNo) === answer) pending.delete(questionNo); });
+      saveStatus.textContent = `✓ 답 ${n}개를 저장했어요. (반 코드 ${student.classCode} · 학번 ${student.studentNo})`;
+      ok = true;
+    } catch (err) {
+      saveStatus.textContent = SAVE_ERRORS[err.message] ?? '저장하지 못했어요. 잠시 뒤 다시 눌러 주세요.';
+      saveBtn.textContent = '다시 저장';
+      saveBtn.hidden = false;
+    } finally {
+      saving = false;
+    }
+    if (ok && pending.size) saveAnswers();   // 저장하는 동안 새로 채점한 답이 있으면 이어서 저장
+  }
+  saveBtn.addEventListener('click', saveAnswers);
 
   function setFeedback(entry, kind, text) {
     entry.feedback.className = `act-feedback${kind ? ` is-${kind}` : ''}`;
@@ -498,6 +566,11 @@ function buildQuiz(items, ctx) {
       if (entry.result?.correct === true) return;   // 이미 맞힌 문제는 그대로 둠
       const r = entry.widget.check();
       entry.result = r;
+      // 학생의 답은 reveal()(입력값을 정답으로 바꿈) 전에 읽는다. answers 표의 문항 번호는 1~5
+      if (r.answered && i < 5) {
+        const given = entry.widget.value();
+        if (given) pending.set(i + 1, given);
+      }
       entry.widget.lock(true);
       if (entry.item.type === 'essay') {
         setFeedback(entry, r.answered ? 'answer' : 'wrong',
@@ -535,6 +608,7 @@ function buildQuiz(items, ctx) {
     retryBtn.hidden = score === total;
     resetBtn.hidden = false;
     summary.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    saveAnswers();   // 기다리지 않고 저장(실패해도 채점 결과는 그대로 보임)
   }
 
   function retryWrong() {
@@ -551,6 +625,8 @@ function buildQuiz(items, ctx) {
   }
 
   function resetAll() {
+    pending.clear();          // 처음부터 다시 풀면 아직 저장하지 못한 답은 버림
+    saveBox.hidden = true;
     entries.forEach((entry) => {
       entry.widget.reset();
       entry.result = null;
