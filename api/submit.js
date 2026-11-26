@@ -4,7 +4,7 @@
 // 학생 구분은 반 코드(classCode)와 학번(studentNo)뿐이다. 실명·연락처는 받지도 저장하지도 않는다.
 // 접속값은 환경변수 SUPABASE_URL·SUPABASE_SECRET_KEY에서만 읽는다. 자세한 규칙은 TRD.md 14절.
 
-import { ApiError, parseBody, sendError, validateStudent, readStoreConfig, insertRows } from './_store.js';
+import { ApiError, parseBody, sendError, validateStudent, normalizeStudentNo, readStoreConfig, insertRows } from './_store.js';
 
 /** 요청 검사. 문제가 있으면 필드 이름이 든 문장(값은 넣지 않음), 없으면 null */
 function validate(b) {
@@ -50,7 +50,7 @@ export default async function handler(req, res) {
     const cfg = readStoreConfig();
     if (!cfg) throw new ApiError(500, 'NO_STORE');
 
-    const who = { class_code: body.classCode, student_no: body.studentNo, level: body.level };
+    const who = { class_code: body.classCode, student_no: normalizeStudentNo(body.studentNo), level: body.level };
     if (body.kind === 'answers') {
       const rows = body.items.map((it) => ({ ...who, question_no: it.questionNo, answer: it.answer.trim() }));
       await insertRows(cfg, 'answers', rows);

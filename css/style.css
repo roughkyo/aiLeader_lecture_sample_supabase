@@ -424,8 +424,10 @@ body.is-away .blur-target { filter: blur(8px); pointer-events: none; user-select
 .badge-who.is-saving { background: var(--ok-soft); color: var(--ok); }
 
 /* 형성평가 저장 상태 */
-.save-box { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-top: 10px; font-size: .92em; }
-.save-status { margin: 0; color: var(--muted); }
+.save-box { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 8px 12px; margin-top: 10px; font-size: .92em; }
+.save-status { flex: 1 1 100%; margin: 0; color: var(--muted); }
+.save-student-form { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 8px 12px; }
+.save-student-form .student-field input { min-width: 130px; padding: 6px 8px; font-size: 14px; }
 
 /* ---------- 5차시: 교사 화면 ---------- */
 .teacher-main { max-width: 1100px; margin: 0 auto; padding: 16px; }

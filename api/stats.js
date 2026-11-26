@@ -12,6 +12,7 @@ import {
   ApiError,
   CLASS_CODE_RE,
   STUDENT_NO_RE,
+  normalizeStudentNo,
   sendError,
   readStoreConfig,
   selectRows,
@@ -62,10 +63,13 @@ function readRequiredClassCode(req) {
 function readOptionalStudentNo(req) {
   const raw = getParam(req, 'studentNo');
   if (raw === undefined || raw === null || raw === '') return null;
-  if (typeof raw !== 'string' || !STUDENT_NO_RE.test(raw.trim())) {
+  if (typeof raw !== 'string') throw new ApiError(400, 'BAD_REQUEST', 'studentNo 형식 오류');
+  const trimmed = raw.trim();
+  const normalized = normalizeStudentNo(trimmed);
+  if (!/^[0-9]+$/.test(trimmed) || !STUDENT_NO_RE.test(normalized)) {
     throw new ApiError(400, 'BAD_REQUEST', 'studentNo 형식 오류');
   }
-  return raw.trim();
+  return normalized;
 }
 
 function stripParticle(token) {

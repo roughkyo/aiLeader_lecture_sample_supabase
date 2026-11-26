@@ -23,7 +23,7 @@
 create table if not exists public.answers (
   id          bigint generated always as identity primary key,
   class_code  text        not null check (class_code ~ '^[0-9A-Za-z-]{1,20}$'),
-  student_no  text        not null check (student_no ~ '^[0-9]{1,10}$'),
+  student_no  text        not null check (student_no ~ '^([1-9][0-9]?|[1-6][1-9](0[1-9]|[1-5][0-9])|[1-6](0[1-9]|[12][0-9])(0[1-9]|[1-5][0-9]))$'),
   level       text        not null check (level in ('basic', 'normal', 'advanced', 'multicultural')),
   question_no smallint    not null check (question_no between 1 and 5),
   answer      text        not null check (char_length(answer) between 1 and 1000),
@@ -47,7 +47,7 @@ create index if not exists answers_class_student_created_idx
 create table if not exists public.questions (
   id            bigint generated always as identity primary key,
   class_code    text        not null check (class_code ~ '^[0-9A-Za-z-]{1,20}$'),
-  student_no    text        not null check (student_no ~ '^[0-9]{1,10}$'),
+  student_no    text        not null check (student_no ~ '^([1-9][0-9]?|[1-6][1-9](0[1-9]|[1-5][0-9])|[1-6](0[1-9]|[12][0-9])(0[1-9]|[1-5][0-9]))$'),
   level         text        not null check (level in ('basic', 'normal', 'advanced', 'multicultural')),
   question_text text        not null check (char_length(question_text) between 1 and 300),
   hint_step     smallint    not null check (hint_step between 1 and 3),

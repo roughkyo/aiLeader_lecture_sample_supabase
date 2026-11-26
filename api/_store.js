@@ -6,8 +6,15 @@
 
 export const LEVELS = ['basic', 'normal', 'advanced', 'multicultural'];
 export const CLASS_CODE_RE = /^[0-9A-Za-z-]{1,20}$/;   // 반 코드(예: 1-3). 이름 같은 한글은 받지 않는다
-export const STUDENT_NO_RE = /^[0-9]{1,10}$/;          // 학번(숫자만). 실명 대신 사용
+// 출석번호(1~99) 또는 4~5자리 학번(학년 1~6 + 반 1~29 + 번호 01~59)
+export const STUDENT_NO_RE = /^([1-9][0-9]?|[1-6][1-9](0[1-9]|[1-5][0-9])|[1-6](0[1-9]|[12][0-9])(0[1-9]|[1-5][0-9]))$/;
 export const MAX_BODY_CHARS = 20_000;
+
+/** 선행 0이 붙은 한 자리 출석번호(01~09)를 1~9로 정규화 */
+export function normalizeStudentNo(raw) {
+  if (typeof raw !== 'string') return '';
+  return /^0([1-9])$/.test(raw) ? raw.slice(1) : raw;
+}
 const REST_TIMEOUT_MS = 10_000;
 
 export class ApiError extends Error {
@@ -47,7 +54,9 @@ const isStr = (v) => typeof v === 'string';
 /** 반 코드·학번·수준 검사. 문제가 있으면 필드 이름이 든 문장, 없으면 null */
 export function validateStudent(b) {
   if (!isStr(b.classCode) || !CLASS_CODE_RE.test(b.classCode)) return 'classCode 형식 오류';
-  if (!isStr(b.studentNo) || !STUDENT_NO_RE.test(b.studentNo)) return 'studentNo 형식 오류';
+  if (!isStr(b.studentNo) || !/^[0-9]+$/.test(b.studentNo) || !STUDENT_NO_RE.test(normalizeStudentNo(b.studentNo))) {
+    return 'studentNo 형식 오류';
+  }
   if (!LEVELS.includes(b.level)) return 'level 값 오류';
   return null;
 }

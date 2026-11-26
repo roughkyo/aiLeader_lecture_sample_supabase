@@ -4,7 +4,7 @@
 // 5차시: 반 코드·학번을 입력했다면 [채점하기] 때 형성평가 답을, 질문을 입력해 힌트를 받을 때 질문을
 //        서버 함수 /api/submit으로 Supabase에 저장한다(js/student.js). 실명은 받지 않는다.
 
-import { getStudent, saveSubmission, SAVE_ERRORS } from './student.js';
+import { getStudent, getRawStudent, setStudentInputs, describeStudent, saveSubmission, SAVE_ERRORS } from './student.js';
 
 const TYPE_LABEL = {
   choice: '하나 고르기',
@@ -145,6 +145,8 @@ function buildSelect(item) {
     sentence.append(select);
   });
 
+  let revealed = false;
+
   return {
     node: sentence,
     check() {
@@ -159,6 +161,7 @@ function buildSelect(item) {
       return { answered: true, correct: allCorrect };
     },
     reveal() {
+      revealed = true;
       selects.forEach(({ select, slot }) => {
         select.value = String(slot.answer);
         select.classList.remove('is-wrong');
@@ -166,9 +169,10 @@ function buildSelect(item) {
       });
     },
     answerText: () => selects.map(({ slot }) => slot.options[slot.answer]).join(' / '),
-    value: () => selects.map(({ select, slot }) => (select.value === '' ? '' : slot.options[Number(select.value)])).join(' / '),
+    value: () => (revealed ? '' : selects.map(({ select, slot }) => (select.value === '' ? '' : slot.options[Number(select.value)])).join(' / ')),
     lock(on) { selects.forEach(({ select }) => { select.disabled = on; }); },
     reset() {
+      revealed = false;
       selects.forEach(({ select }) => { select.value = ''; select.disabled = false; });
       clearMarks(selects.map((s) => s.select));
     },
@@ -191,6 +195,8 @@ function buildBlank(item) {
     sentence.append(input);
   });
 
+  let revealed = false;
+
   return {
     node: sentence,
     check() {
@@ -205,6 +211,7 @@ function buildBlank(item) {
       return { answered: true, correct: allCorrect };
     },
     reveal() {
+      revealed = true;
       inputs.forEach(({ input, accepted }) => {
         if (!matchesAnswer(input.value, accepted)) input.value = accepted[0];
         input.classList.remove('is-wrong');
@@ -212,9 +219,10 @@ function buildBlank(item) {
       });
     },
     answerText: () => inputs.map(({ accepted }) => accepted[0]).join(' / '),
-    value: () => inputs.map(({ input }) => input.value.trim()).join(' / '),
+    value: () => (revealed ? '' : inputs.map(({ input }) => input.value.trim()).join(' / ')),
     lock(on) { inputs.forEach(({ input }) => { input.readOnly = on; }); },
     reset() {
+      revealed = false;
       inputs.forEach(({ input }) => { input.value = ''; input.readOnly = false; });
       clearMarks(inputs.map((x) => x.input));
     },
@@ -515,10 +523,34 @@ function buildQuiz(items, ctx) {
 
   // 저장 상태: 반 코드·학번이 있으면 채점한 답을 Supabase(answers 표)에 저장한다
   const saveStatus = el('p', { class: 'save-status', role: 'status', 'aria-live': 'polite' });
+  const inlineClass = el('input', {
+    type: 'text', maxlength: '20', autocomplete: 'off', spellcheck: 'false',
+    placeholder: '예: 1-3', 'aria-label': '반 코드',
+  });
+  const inlineNo = el('input', {
+    type: 'text', maxlength: '5', inputmode: 'numeric', autocomplete: 'off',
+    placeholder: '예: 7 또는 10107', 'aria-label': '학번',
+  });
   const saveBtn = el('button', { type: 'button', class: 'btn btn-small', hidden: '' });
-  const saveBox = el('div', { class: 'save-box', hidden: '' }, saveStatus, saveBtn);
+  const saveForm = el('form', { class: 'save-student-form', hidden: '' },
+    el('label', { class: 'student-field' }, '반 코드', inlineClass),
+    el('label', { class: 'student-field' }, '학번', inlineNo),
+  );
+  const saveBox = el('div', { class: 'save-box', hidden: '' }, saveStatus, saveForm, saveBtn);
   const pending = new Map();   // 아직 저장하지 못한 답: 문항 번호 → 답
   let saving = false;
+  let graded = false;
+
+  const syncInlineStudent = () => {
+    setStudentInputs({ classCode: inlineClass.value, studentNo: inlineNo.value });
+  };
+  inlineClass.addEventListener('input', syncInlineStudent);
+  inlineNo.addEventListener('input', syncInlineStudent);
+  saveForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    syncInlineStudent();
+    saveAnswers();
+  });
 
   section.append(list, summary, buttons, saveBox);
 
@@ -527,12 +559,22 @@ function buildQuiz(items, ctx) {
     saveBox.hidden = false;
     const student = getStudent();
     if (!student) {
-      saveStatus.textContent = '반 코드·학번을 입력하지 않아서 답은 저장하지 않았어요. 수준 화면에서 입력한 뒤 [저장하기]를 누르세요.';
+      if (saveForm.hidden) {
+        const raw = getRawStudent();
+        inlineClass.value = raw.classCode;
+        inlineNo.value = raw.studentNo;
+      }
+      const desc = describeStudent(inlineClass.value, inlineNo.value);
+      saveStatus.textContent = desc.kind === 'wrong'
+        ? `${desc.text} 입력한 뒤 [저장하기]를 누르세요.`
+        : '반 코드·학번을 입력하지 않아서 답은 저장하지 않았어요. 아래에 바로 입력하고 [저장하기]를 누르세요.';
+      saveForm.hidden = false;
       saveBtn.textContent = '저장하기';
       saveBtn.hidden = false;
       return;
     }
     saving = true;
+    saveForm.hidden = true;
     saveBtn.hidden = true;
     saveStatus.textContent = '답을 저장하는 중…';
     const sent = [...pending].map(([questionNo, answer]) => ({ questionNo, answer }));
@@ -559,11 +601,13 @@ function buildQuiz(items, ctx) {
   }
 
   function grade() {
+    if (graded) return;
+    graded = true;
     const unanswered = [];
     let essayInfo = null;
 
     entries.forEach((entry, i) => {
-      if (entry.result?.correct === true) return;   // 이미 맞힌 문제는 그대로 둠
+      if (entry.result !== null) return;   // 이미 채점한 문항(맞힘·오답·미응답)은 중복 채점·저장하지 않음
       const r = entry.widget.check();
       entry.result = r;
       // 학생의 답은 reveal()(입력값을 정답으로 바꿈) 전에 읽는다. answers 표의 문항 번호는 1~5
@@ -612,6 +656,7 @@ function buildQuiz(items, ctx) {
   }
 
   function retryWrong() {
+    graded = false;
     entries.forEach((entry) => {
       if (entry.item.type === 'essay' || entry.result?.correct) return;
       entry.widget.reset();
@@ -625,7 +670,9 @@ function buildQuiz(items, ctx) {
   }
 
   function resetAll() {
+    graded = false;
     pending.clear();          // 처음부터 다시 풀면 아직 저장하지 못한 답은 버림
+    saveForm.hidden = true;
     saveBox.hidden = true;
     entries.forEach((entry) => {
       entry.widget.reset();
