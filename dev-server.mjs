@@ -10,12 +10,14 @@ import { fileURLToPath } from 'node:url';
 import feedbackHandler from './api/feedback.js';
 import submitHandler from './api/submit.js';
 import resultsHandler from './api/results.js';
+import statsHandler from './api/stats.js';
 
 // 주소 → 서버 함수. api/_store.js 같은 공통 도구는 경로로 열리지 않는다.
 const API_ROUTES = {
   '/api/feedback': feedbackHandler,
   '/api/submit': submitHandler,
   '/api/results': resultsHandler,
+  '/api/stats': statsHandler,
 };
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
@@ -145,4 +147,5 @@ server.listen(PORT, HOST, () => {
   const on = (name) => (process.env[name]?.trim() ? '설정됨' : '미설정');
   console.log(`SUPABASE_URL: ${on('SUPABASE_URL')} | SUPABASE_SECRET_KEY: ${on('SUPABASE_SECRET_KEY')} | TEACHER_CODE: ${on('TEACHER_CODE')}`);
   console.log(`교사 화면: http://${HOST}:${PORT}/teacher.html`);
+  console.log(`질문 보드: http://${HOST}:${PORT}/board.html`);
 });

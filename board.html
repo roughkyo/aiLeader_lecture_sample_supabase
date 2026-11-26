@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>우리 반 질문 보드 — 교사용 통계</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/board.css">
+  <script type="module" src="js/board.js"></script>
+</head>
+<body class="clay-page">
+  <div class="clay-bg" aria-hidden="true">
+    <span class="clay-orb orb-1"></span>
+    <span class="clay-orb orb-2"></span>
+    <span class="clay-orb orb-3"></span>
+  </div>
+
+  <header class="topbar clay-topbar">
+    <div class="clay-brand">
+      <span class="clay-logo" aria-hidden="true">Q</span>
+      <div>
+        <h1 class="app-title">우리 반 질문 보드</h1>
+        <p class="clay-subtitle">수업 마무리 5분 · 교사용 통계 보드</p>
+      </div>
+    </div>
+    <nav class="board-nav" aria-label="화면 이동">
+      <a class="clay-btn clay-btn-soft" href="teacher.html">제출 목록</a>
+      <a class="clay-btn clay-btn-soft" href="index.html">학생 화면</a>
+    </nav>
+  </header>
+
+  <main class="board-main">
+    <!-- 조회 입력 카드 -->
+    <section class="clay-card clay-card-hero" aria-labelledby="queryTitle">
+      <div class="card-head-row">
+        <span class="clay-pill-icon is-indigo" aria-hidden="true">🔑</span>
+        <div>
+          <h2 id="queryTitle" class="board-card-title">반별 통계 조회</h2>
+          <p class="board-note">교사 코드가 맞을 때만 통계를 보여 줘요. 코드는 저장하지 않으며 학생 순위표와 실명은 표시하지 않아요.</p>
+        </div>
+      </div>
+
+      <form id="queryForm" class="board-form" autocomplete="off">
+        <label class="clay-field">
+          <span class="clay-field-label">교사 코드</span>
+          <input id="teacherCodeInput" class="clay-input" type="password" autocomplete="off" spellcheck="false" placeholder="교사 코드 입력" required>
+        </label>
+        <label class="clay-field">
+          <span class="clay-field-label">반 코드</span>
+          <input id="classCodeInput" class="clay-input" type="text" maxlength="20" autocomplete="off" spellcheck="false" placeholder="예: 1-1, 1-3" required>
+        </label>
+        <div class="board-actions">
+          <button id="viewBtn" class="clay-btn clay-btn-primary" type="submit">통계 보기</button>
+          <button id="refreshBtn" class="clay-btn clay-btn-mint" type="button" hidden>새로고침</button>
+          <button id="clearBtn" class="clay-btn clay-btn-ghost" type="button" hidden>코드 지우기</button>
+        </div>
+      </form>
+      <p id="statusMsg" class="student-status clay-status" role="status" aria-live="polite"></p>
+    </section>
+
+    <!-- 통계 결과 영역 -->
+    <div id="boardContent" class="board-content" hidden>
+      <!-- 요약 배너 -->
+      <div class="clay-banner">
+        <strong id="classBadge" class="clay-badge"></strong>
+        <span id="summaryText" class="board-summary"></span>
+      </div>
+
+      <!-- 2단 그리드: ① 수준별 질문 수 + ④ 힌트 단계 현황 -->
+      <div class="board-grid">
+        <section class="clay-card clay-tint-sky" aria-labelledby="levelChartTitle">
+          <div class="card-head-row">
+            <span class="clay-pill-icon is-sky" aria-hidden="true">01</span>
+            <h2 id="levelChartTitle" class="board-card-title">수준별 질문 수</h2>
+          </div>
+          <div id="levelBars" class="bar-list"></div>
+        </section>
+
+        <section class="clay-card clay-tint-mint" aria-labelledby="hintChartTitle">
+          <div class="card-head-row">
+            <span class="clay-pill-icon is-mint" aria-hidden="true">04</span>
+            <h2 id="hintChartTitle" class="board-card-title">힌트 단계 현황</h2>
+          </div>
+          <div id="hintBars" class="bar-list"></div>
+        </section>
+      </div>
+
+      <!-- ③ 자주 나온 질문 용어 (한글·영문 상위 5개) -->
+      <section class="clay-card clay-tint-amber" aria-labelledby="keywordTitle">
+        <div class="card-head-row">
+          <span class="clay-pill-icon is-amber" aria-hidden="true">03</span>
+          <h2 id="keywordTitle" class="board-card-title">자주 나온 질문 용어 <small>(한글·영문 상위 5개)</small></h2>
+        </div>
+        <div id="keywordList" class="keyword-list"></div>
+      </section>
+
+      <!-- ② 확인 질문 문항별 정답률 -->
+      <section class="clay-card clay-tint-lavender" aria-labelledby="quizTitle">
+        <div class="card-head-row">
+          <span class="clay-pill-icon is-indigo" aria-hidden="true">02</span>
+          <h2 id="quizTitle" class="board-card-title">확인 질문 문항별 정답률 <small>(학생별 최신 답 기준)</small></h2>
+        </div>
+        <div class="table-wrap clay-table-wrap">
+          <table id="quizTable" class="data-table board-quiz-table">
+            <thead>
+              <tr>
+                <th>수준</th>
+                <th>1번</th>
+                <th>2번</th>
+                <th>3번</th>
+                <th>4번</th>
+                <th>5번 (서술형)</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ⑤ 학번별 보기 (교사용, 기본 접힘, 순위·합계 점수 없음) -->
+      <section class="clay-card clay-tint-peach" aria-labelledby="studentTitle">
+        <details id="studentDetails" class="student-details">
+          <summary id="studentTitle" class="student-summary">
+            <span class="clay-pill-icon is-peach" aria-hidden="true">05</span>
+            <span class="student-summary-text">학번별 보기 <small>(교사 혼자 확인 · 학번 순)</small></span>
+          </summary>
+          <p class="board-note">학생에게 화면을 공유할 때는 이 영역을 닫아 두세요. 합계 점수나 학생 비교는 표시하지 않아요.</p>
+          <div class="student-picker">
+            <label class="clay-field">
+              <span class="clay-field-label">학번 고르기</span>
+              <select id="studentSelect" class="clay-select"></select>
+            </label>
+            <span id="studentStatusMsg" class="board-summary" role="status" aria-live="polite"></span>
+          </div>
+
+          <div id="studentDetailBox" hidden>
+            <h3 class="sub-title">학생 질문</h3>
+            <div class="table-wrap clay-table-wrap">
+              <table id="studentQuestionsTable" class="data-table">
+                <thead>
+                  <tr><th>질문 시각</th><th>수준</th><th>질문</th><th>힌트 단계</th></tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+
+            <h3 class="sub-title">확인 질문 답 <small>(문항별 최신 답)</small></h3>
+            <div class="table-wrap clay-table-wrap">
+              <table id="studentAnswersTable" class="data-table">
+                <thead>
+                  <tr><th>제출 시각</th><th>수준</th><th>문항</th><th>답</th><th>결과</th></tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+        </details>
+      </section>
+    </div>
+  </main>
+</body>
+</html>
