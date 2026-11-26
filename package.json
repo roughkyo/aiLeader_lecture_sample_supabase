@@ -1,0 +1,12 @@
+{
+  "name": "level-reader",
+  "private": true,
+  "description": "4차시 샘플 — 수준별 학습자료 + 형성평가 + 소크라테스식 힌트(Gemini)",
+  "type": "module",
+  "scripts": {
+    "dev": "node dev-server.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

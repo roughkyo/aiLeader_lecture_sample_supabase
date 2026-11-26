@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>수준별 학습자료 — GPT의 어머니, 트랜스포머</title>
+  <link rel="stylesheet" href="css/style.css">
+  <!-- 마크다운 → HTML 변환, 변환 결과 정화(스크립트 제거) -->
+  <script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js" defer></script>
+  <script type="module" src="js/app.js"></script>
+</head>
+<body>
+  <header class="topbar blur-target">
+    <h1 class="app-title">GPT의 어머니, 트랜스포머</h1>
+
+    <div class="mc-controls">
+      <button id="mcToggle" class="btn btn-mc" type="button" aria-pressed="false">🌏 다문화 모드</button>
+      <label class="lang-label" for="langSelect">뜻 언어</label>
+      <select id="langSelect" disabled>
+        <option value="vi" lang="vi">베트남어 (Tiếng Việt)</option>
+        <option value="zh" lang="zh">중국어 (中文)</option>
+      </select>
+    </div>
+
+    <div id="focusStatus" class="focus-status" hidden>
+      <span>집중 시간 <strong id="focusTime">00:00</strong></span>
+      <span>이탈 <strong id="awayCount">0</strong>회</span>
+      <button id="focusEndBtn" class="btn btn-ghost" type="button">집중 끝내기</button>
+    </div>
+  </header>
+
+  <main class="blur-target">
+    <!-- 1. 수준 선택 화면 -->
+    <section id="levelScreen" class="screen" aria-labelledby="levelTitle">
+      <h2 id="levelTitle">내 수준을 골라 주세요</h2>
+      <div class="level-grid">
+        <button class="level-card" type="button" data-level="basic">
+          <span class="level-name">기초</span>
+          <span class="level-desc">쉬운 말, 짧은 문장으로 핵심만</span>
+        </button>
+        <button class="level-card" type="button" data-level="normal">
+          <span class="level-name">보통</span>
+          <span class="level-desc">교과서 수준의 설명</span>
+        </button>
+        <button class="level-card" type="button" data-level="advanced">
+          <span class="level-name">심화</span>
+          <span class="level-desc">원리와 수식까지 깊이 있게</span>
+        </button>
+      </div>
+      <p class="mc-hint">한국어가 아직 어렵다면 위쪽의 <strong>🌏 다문화 모드</strong>를 켜 보세요. 쉬운 한국어 자료가 열리고, 밑줄 친 낱말을 누르면 고른 언어로 뜻을 볼 수 있어요.</p>
+    </section>
+
+    <!-- 2. 읽기 화면 -->
+    <section id="readerScreen" class="screen" hidden>
+      <div class="toolbar">
+        <button id="backBtn" class="btn btn-ghost" type="button">← 수준 다시 고르기</button>
+        <span id="levelBadge" class="badge"></span>
+        <div class="toolbar-group">
+          <button id="fontBtn" class="btn" type="button" aria-pressed="false">가+ 글자 크기: 보통</button>
+          <button id="speakBtn" class="btn" type="button" aria-pressed="false">🔊 읽어 주기</button>
+          <button id="focusStartBtn" class="btn btn-primary" type="button">집중 시작</button>
+        </div>
+      </div>
+      <p id="mcNotice" class="mc-notice" hidden>밑줄 친 낱말을 누르면 뜻을 볼 수 있어요.</p>
+      <p id="focusNote" class="focus-note" hidden></p>
+      <div id="focusResult" class="focus-result" role="status" hidden></div>
+      <article id="reader" class="reader" data-size="normal" aria-live="polite"></article>
+    </section>
+  </main>
+
+  <!-- 낱말 뜻 말풍선 -->
+  <div id="termPopover" class="popover" role="dialog" aria-labelledby="popWord" hidden>
+    <button class="popover-close" type="button" aria-label="닫기">×</button>
+    <p id="popWord" class="pop-word"></p>
+    <p class="pop-easy"></p>
+    <p class="pop-lang"><span class="pop-lang-label"></span><span class="pop-meaning"></span></p>
+    <div class="pop-actions">
+      <button class="btn btn-small" type="button" data-say="ko">🔊 한국어</button>
+      <button class="btn btn-small" type="button" data-say="lang">🔊 <span class="pop-say-label"></span></button>
+    </div>
+  </div>
+
+  <!-- 집중 모드 이탈 안내 -->
+  <div id="awayOverlay" class="away-overlay" role="alertdialog" aria-modal="true" aria-labelledby="awayTitle" hidden>
+    <div class="away-card">
+      <p class="away-count" id="awayBadge"></p>
+      <h2 id="awayTitle"></h2>
+      <p id="awayText"></p>
+      <button id="awayBtn" class="btn btn-primary" type="button" hidden></button>
+    </div>
+  </div>
+</body>
+</html>

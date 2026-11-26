@@ -1,0 +1,18 @@
+# 비밀값: API 키가 든 파일은 저장소에 올리지 않는다
+.env
+.env.*
+!.env.example
+
+# 패키지 및 로그
+node_modules/
+npm-debug.log*
+*.log
+
+# OS 및 에디터 임시 파일
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
+*.swp
+*.swo
