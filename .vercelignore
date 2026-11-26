@@ -1,0 +1,16 @@
+# Vercel에 올리지 않을 파일: 공개 주소(https://…vercel.app/파일명)로 열리면 안 되는 것들
+# 비밀값
+/.env
+/.env.*
+/.git
+/node_modules
+# 설계 문서·교사용 검토 자료
+/README.md
+/PRD.md
+/TRD.md
+/설계명세서.md
+/원문_*.md
+/materials/원문대비_변경점.md
+# 개발용·DB 설정 파일
+/supabase
+/dev-server.mjs
